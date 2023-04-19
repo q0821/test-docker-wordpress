@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+
+  wordpress:
+    build: ./src/wordpress
+    restart: always
+    depends_on:
+     - mysql
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_USER: user
+      WORDPRESS_DB_PASSWORD: pass
+      WORDPRESS_DB_NAME: db
+      WORDPRESS_CONFIG_EXTRA: |
+        # define('WP_HOME','${DEV_HOST:-http://127.0.0.1}:${DEV_WEB_PORT:-1337}');
+        # define('WP_SITEURL','${DEV_HOST:-http://127.0.0.1}:${DEV_WEB_PORT:-1337}');
+    ports:
+      - 1337:80
+    volumes:
+      - wp:/var/www/html
+      - ./src/wordpress/plugins:/var/www/html/wp-content/plugins
+      - ./src/wordpress/themes:/var/www/html/wp-content/themes
+
+  mysql:
+    image: mysql:8
+    restart: always
+    logging:
+      driver: none
+    ports:
+      - ${DEV_MYSQL_PORT:-3306}:3306
+    environment:
+      MYSQL_DATABASE: db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - mysql:/var/lib/mysql
+
+  backup:
+    image: aveltens/wordpress-backup
+    restart: always
+    volumes:
+      - wp:/var/www/html
+      - ./backups:/backups
+    depends_on:
+     - mysql
+     - wordpress
+    environment:
+      MYSQL_ENV_MYSQL_DATABASE: db
+      MYSQL_ENV_MYSQL_USER: user
+      MYSQL_ENV_MYSQL_PASSWORD: pass
+      MYSQL_PORT_3306_TCP_PORT: 3306
+
+volumes:
+  wp:
+  mysql:
